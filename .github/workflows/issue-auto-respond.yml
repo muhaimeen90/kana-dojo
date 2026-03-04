@@ -57,6 +57,26 @@ jobs:
               }, str);
             }
 
+            const reactionPool = ['+1', 'laugh', 'hooray', 'heart', 'rocket', 'eyes'];
+            function pickRandomReactions(count) {
+              const shuffled = [...reactionPool].sort(() => Math.random() - 0.5);
+              return shuffled.slice(0, Math.min(count, reactionPool.length));
+            }
+            async function reactToComment(commentId, reactions) {
+              for (const content of reactions) {
+                try {
+                  await github.rest.reactions.createForIssueComment({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    comment_id: commentId,
+                    content
+                  });
+                } catch (e) {
+                  console.log(`Reaction ${content} failed: ${e.message}`);
+                }
+              }
+            }
+
             if (context.eventName === 'issues') {
               const assignee = context.payload.assignee?.login;
 
@@ -74,12 +94,13 @@ jobs:
                 return '- ' + fillTemplate(item, { commenter: assignee, issueNumber: issue.number, repoUrl });
               }).join('\n');
 
-              await github.rest.issues.createComment({
+              const reply = await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: issue.number,
                 body: `${fillTemplate(msg.greeting, { commenter: assignee, issueNumber: issue.number, repoUrl })}\n\n${fillTemplate(msg.body, { commenter: assignee, issueNumber: issue.number, repoUrl })}\n\n${fillTemplate(msg.nextSteps.title, { commenter: assignee, issueNumber: issue.number, repoUrl })}\n${nextSteps}\n\n${fillTemplate(msg.resources.title, { commenter: assignee, issueNumber: issue.number, repoUrl })}\n${resources}\n\n${fillTemplate(msg.footer, { commenter: assignee, issueNumber: issue.number, repoUrl })}\n\n${fillTemplate(msg.encouragement, { commenter: assignee, issueNumber: issue.number, repoUrl })}`
               });
+              await reactToComment(reply.data.id, pickRandomReactions(3));
 
               console.log(`Posted assignment instructions for issue #${issue.number} to @${assignee}`);
               return;
@@ -122,5 +143,6 @@ jobs:
               issue_number: issue.number,
               assignees: [commenter]
             });
+            await reactToComment(context.payload.comment.id, pickRandomReactions(3));
 
             console.log(`Assigned issue #${issue.number} to @${commenter} — assignment reply will be posted by the issues:assigned event.`);

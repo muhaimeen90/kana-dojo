@@ -186,8 +186,10 @@
     "game": "Tales series",
     "character": "Various endings",
     "id": 19,
-    "issued": true,
-    "completed": false
+    "issued": false,
+    "completed": true,
+    "completedBy": "Kubudak90",
+    "completedPR": 8081
   },
   {
     "japanese": "勝つと思うな、思えば負けよ",

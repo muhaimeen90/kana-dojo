@@ -426,7 +426,7 @@
     "english": "As long as I have something to protect, I won't lose.",
     "anime": "Bleach",
     "character": "Ichigo Kurosaki",
-    "completed": false,
+    "completed": true,
     "issued": false
   },
   {
@@ -437,7 +437,7 @@
     "anime": "Death Note",
     "character": "Light Yagami",
     "completed": false,
-    "issued": false
+    "issued": true
   },
   {
     "id": 45,

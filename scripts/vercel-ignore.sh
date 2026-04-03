@@ -4,48 +4,86 @@
 # Exit 0 = Skip build (ignore)
 # Exit 1 = Proceed with build
 
-# Get list of changed files
-CHANGED_FILES=""
+set -o pipefail
 
-LAST_COMMIT_MESSAGE=$(git log -1 --pretty=%s 2>/dev/null)
+is_skip_file() {
+  case "$1" in
+    community/*)
+      return 0
+      ;;
+    @community/*)
+      return 0
+      ;;
+    *.md|*.MD)
+      return 0
+      ;;
+    package.json|package-lock.json)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+get_changed_files() {
+  local files=""
+
+  if [ -n "${VERCEL_GIT_PULL_REQUEST_BASE_BRANCH:-}" ] && [ -n "${VERCEL_GIT_COMMIT_SHA:-}" ]; then
+    git fetch origin "${VERCEL_GIT_PULL_REQUEST_BASE_BRANCH}" --depth=1 2>/dev/null || true
+    files=$(git diff "origin/${VERCEL_GIT_PULL_REQUEST_BASE_BRANCH}...${VERCEL_GIT_COMMIT_SHA}" --name-only 2>/dev/null || true)
+  fi
+
+  if [ -z "$files" ] && [ -n "${VERCEL_GIT_PREVIOUS_SHA:-}" ] && [ -n "${VERCEL_GIT_COMMIT_SHA:-}" ]; then
+    files=$(git diff "${VERCEL_GIT_PREVIOUS_SHA}...${VERCEL_GIT_COMMIT_SHA}" --name-only 2>/dev/null || true)
+  fi
+
+  if [ -z "$files" ]; then
+    files=$(git diff HEAD~1 HEAD --name-only 2>/dev/null || true)
+  fi
+
+  if [ -z "$files" ]; then
+    files=$(git show --name-only --pretty="" HEAD 2>/dev/null || true)
+  fi
+
+  printf '%s\n' "$files"
+}
+
+LAST_COMMIT_MESSAGE=$(git log -1 --pretty=%s 2>/dev/null || true)
 if [[ "$LAST_COMMIT_MESSAGE" == chore\(automation\):* ]]; then
   echo "🔵 Automation commit detected; skipping build."
   exit 0
 fi
 
-# Log Vercel Git environment presence for troubleshooting
 if [ -n "${VERCEL_GIT_COMMIT_SHA:-}" ] || [ -n "${VERCEL_GIT_PREVIOUS_SHA:-}" ] || [ -n "${VERCEL_GIT_PULL_REQUEST_BASE_BRANCH:-}" ]; then
   echo "Vercel Git context detected (env vars present)."
 else
   echo "Vercel Git context not detected (env vars missing)."
 fi
 
-if [ -n "${VERCEL_GIT_PULL_REQUEST_BASE_BRANCH:-}" ] && [ -n "${VERCEL_GIT_COMMIT_SHA:-}" ]; then
-  git fetch origin "${VERCEL_GIT_PULL_REQUEST_BASE_BRANCH}" --depth=1 2>/dev/null
-  CHANGED_FILES=$(git diff "origin/${VERCEL_GIT_PULL_REQUEST_BASE_BRANCH}...${VERCEL_GIT_COMMIT_SHA}" --name-only 2>/dev/null)
-fi
-
-if [ -z "$CHANGED_FILES" ] && [ -n "${VERCEL_GIT_PREVIOUS_SHA:-}" ] && [ -n "${VERCEL_GIT_COMMIT_SHA:-}" ]; then
-  CHANGED_FILES=$(git diff "${VERCEL_GIT_PREVIOUS_SHA}...${VERCEL_GIT_COMMIT_SHA}" --name-only 2>/dev/null)
-fi
-
-if [ -z "$CHANGED_FILES" ]; then
-  CHANGED_FILES=$(git diff HEAD~1 HEAD --name-only 2>/dev/null)
-fi
-
-if [ -z "$CHANGED_FILES" ]; then
-  CHANGED_FILES=$(git show --name-only --pretty="" HEAD 2>/dev/null)
-fi
+CHANGED_FILES="$(get_changed_files | tr -d '\r' | sed '/^$/d')"
 
 if [ -z "$CHANGED_FILES" ]; then
   echo "🟡 Could not determine changed files via git diff. Proceeding with build."
   exit 1
 fi
 
-# Fast-path: only community data (optionally with package-lock.json) should never trigger a build
-ONLY_COMMUNITY_DATA=$(echo "$CHANGED_FILES" | grep -vE '^(package-lock\.json|community/backlog/|community/content/|@community/backlog/|@community/content/)' | grep -v '^$' | wc -l)
-if [ "$ONLY_COMMUNITY_DATA" -eq 0 ]; then
-  echo "Only community data changed. Skipping build."
+REMAINING_FILES=""
+while IFS= read -r file; do
+  [ -z "$file" ] && continue
+  if is_skip_file "$file"; then
+    echo "Skipping non-production file: $file"
+    continue
+  fi
+  REMAINING_FILES="${REMAINING_FILES}${file}"$'\n'
+done <<EOF
+$CHANGED_FILES
+EOF
+
+REMAINING_FILES="$(printf '%s' "$REMAINING_FILES" | sed '/^$/d')"
+
+if [ -z "$REMAINING_FILES" ]; then
+  echo "Only community, markdown, or package manifest files changed. Skipping build."
   exit 0
 fi
 
@@ -155,7 +193,7 @@ IGNORE_PATTERNS=(
 COMBINED_PATTERN=$(IFS="|"; echo "${IGNORE_PATTERNS[*]}")
 
 # Filter out ignored files and count remaining
-REMAINING=$(echo "$CHANGED_FILES" | grep -vE "$COMBINED_PATTERN" | grep -v '^$' | wc -l)
+REMAINING=$(printf '%s\n' "$REMAINING_FILES" | grep -vE "$COMBINED_PATTERN" | grep -v '^$' | wc -l)
 
 if [ "$REMAINING" -eq 0 ]; then
   echo "🔵 Only non-production files changed. Skipping build."

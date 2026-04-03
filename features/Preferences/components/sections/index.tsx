@@ -5,6 +5,7 @@ import Fonts from '../display/Fonts';
 import Behavior from './Behavior';
 import Backup from './Backup';
 import CollapsibleSection from '../shared/CollapsibleSection';
+import PreferencesSectionNav from '../shared/PreferencesSectionNav';
 // import GoalTimers from './GoalTimers';
 import {
   Joystick,
@@ -18,14 +19,20 @@ import {
 } from 'lucide-react';
 import Effects from '../display/Effects';
 
+const USE_NEW_PREFERENCES_ICON_DESIGN = false;
+
 const Settings = () => {
   return (
-    <div className='flex flex-col gap-6'>
+    <div className='flex flex-col gap-10'>
+      <PreferencesSectionNav />
+
       {/* Behavior Section */}
       <CollapsibleSection
+        id='behavior'
         title='Behavior'
         fullBorder
         icon={<Joystick size={28} />}
+        useNewIconDesign={USE_NEW_PREFERENCES_ICON_DESIGN}
         level='section'
         defaultOpen={true}
         storageKey='prefs-behavior'
@@ -35,9 +42,11 @@ const Settings = () => {
 
       {/* Display Section */}
       <CollapsibleSection
+        id='display'
         title='Display'
         fullBorder
         icon={<Palette size={28} />}
+        useNewIconDesign={USE_NEW_PREFERENCES_ICON_DESIGN}
         level='section'
         defaultOpen={true}
         storageKey='prefs-display'
@@ -47,35 +56,40 @@ const Settings = () => {
           <CollapsibleSection
             title='Themes'
             icon={<Sparkles size={22} />}
+            useNewIconDesign={USE_NEW_PREFERENCES_ICON_DESIGN}
             level='subsection'
             defaultOpen={true}
             storageKey='prefs-themes'
           >
-            <Themes />
+            <Themes useNewIconDesign={USE_NEW_PREFERENCES_ICON_DESIGN} />
           </CollapsibleSection>
 
           {/* Fonts Subsection */}
           <CollapsibleSection
             title='Fonts'
             icon={<CaseSensitive size={28} />}
+            useNewIconDesign={USE_NEW_PREFERENCES_ICON_DESIGN}
             level='subsection'
             defaultOpen={true}
             storageKey='prefs-fonts'
           >
-            <Fonts />
-          </CollapsibleSection>
-
-          {/* Effects Subsection */}
-          <CollapsibleSection
-            title='Effects'
-            icon={<Wand2 size={22} />}
-            level='subsection'
-            defaultOpen={true}
-            storageKey='prefs-effects'
-          >
-            <Effects />
+            <Fonts useNewIconDesign={USE_NEW_PREFERENCES_ICON_DESIGN} />
           </CollapsibleSection>
         </div>
+      </CollapsibleSection>
+
+      {/* Effects Section */}
+      <CollapsibleSection
+        id='effects'
+        title='Effects'
+        fullBorder
+        icon={<Wand2 size={28} />}
+        useNewIconDesign={USE_NEW_PREFERENCES_ICON_DESIGN}
+        level='section'
+        defaultOpen={true}
+        storageKey='prefs-effects'
+      >
+        <Effects useNewIconDesign={USE_NEW_PREFERENCES_ICON_DESIGN} />
       </CollapsibleSection>
 
       {/* Goal Timers section - commented out
@@ -91,19 +105,23 @@ const Settings = () => {
       */}
 
       {/* Backup Section - not collapsible since it's short */}
-      <div className='flex flex-col gap-4'>
-        <h3 className='flex flex-row items-end gap-2 border-b-1 border-(--border-color) pb-2 text-2xl'>
-          <Save size={22} className='text-(--secondary-color)' />
-          <span>Backup</span>
-        </h3>
+      <CollapsibleSection
+        title='Backup'
+        fullBorder
+        icon={<Save size={28} />}
+        useNewIconDesign={USE_NEW_PREFERENCES_ICON_DESIGN}
+        level='section'
+        defaultOpen={true}
+        storageKey='prefs-backup'
+      >
         <Backup />
-      </div>
+      </CollapsibleSection>
 
       {/* Coming Soon */}
       <div className='mb-12 flex flex-col gap-4'>
         <h3
           className={clsx(
-            'flex flex-row items-end gap-2 border-b-0 border-(--border-color) py-6 text-3xl',
+            'flex flex-row items-end gap-2 border-l-20 border-(--border-color) py-6 pl-4 text-3xl',
           )}
         >
           <Blocks size={32} />

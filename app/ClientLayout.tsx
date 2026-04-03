@@ -7,6 +7,8 @@ import { useShallow } from 'zustand/react/shallow';
 import { usePathname } from 'next/navigation';
 import { ScrollRestoration } from 'next-scroll-restoration';
 import WelcomeModal from '@/shared/components/Modals/WelcomeModal';
+import { DonationModal } from '@/features/Preferences';
+import useOnboardingStore from '@/shared/store/useOnboardingStore';
 import {
   AchievementNotificationContainer,
   AchievementIntegration,
@@ -22,7 +24,7 @@ import MobileBottomBar from '@/shared/components/layout/BottomBar';
 import { useVisitTracker } from '@/features/Progress/hooks/useVisitTracker';
 import { getGlobalAdaptiveSelector } from '@/shared/lib/adaptiveSelection';
 import GlobalAudioController from '@/shared/components/layout/GlobalAudioController';
-import { useClick } from '@/shared/hooks/useAudio';
+import { useClick } from '@/shared/hooks/generic/useAudio';
 import ServiceWorkerRegistration from '@/shared/components/ServiceWorkerRegistration';
 import CursorTrailRenderer from '@/features/Preferences/components/renderers/CursorTrailRenderer';
 import ClickEffectRenderer from '@/features/Preferences/components/renderers/ClickEffectRenderer';
@@ -89,6 +91,8 @@ export default function ClientLayout({
 
   // 3. Create state to hold the fonts module
   const [fontsModule, setFontsModule] = useState<FontObject[] | null>(null);
+  const [isDonationModalOpen, setIsDonationModalOpen] = useState(false);
+  const hasSeenWelcome = useOnboardingStore(state => state.hasSeenWelcome);
 
   // Memoize fontClassName calculation to prevent recalculation on every render (5-10ms savings)
   const fontClassName = useMemo(() => {
@@ -98,6 +102,74 @@ export default function ClientLayout({
         ?.font.className || ''
     );
   }, [fontsModule, effectiveFont]);
+
+  const pathname = usePathname();
+
+  useEffect(() => {
+    const isDev = process.env.NODE_ENV === 'development';
+    const isPreviewDeployment =
+      process.env.NODE_ENV === 'production' &&
+      process.env.NEXT_PUBLIC_VERCEL_ENV !== 'production';
+    const isTargetRoute = /\/(kana|kanji|vocabulary)(\/|$)/.test(pathname);
+    const isPreferencesRoute = /\/preferences(\/|$)/.test(pathname);
+    const isBaseRoute =
+      pathname === '/' || pathname === '/en' || pathname === '/ja';
+    const donationLastPathKey = 'donation-modal-last-pathname';
+    const donationCycleCountKey = 'donation-modal-cycle-count';
+    const previousPathname =
+      typeof window !== 'undefined'
+        ? sessionStorage.getItem(donationLastPathKey)
+        : null;
+
+    if (isBaseRoute) {
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem(donationLastPathKey, pathname);
+      }
+      setIsDonationModalOpen(false);
+      return;
+    }
+
+    if ((isDev || isPreviewDeployment) && isPreferencesRoute) {
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem(donationLastPathKey, pathname);
+      }
+      const timer = setTimeout(() => {
+        setIsDonationModalOpen(true);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+
+    const cameFromHome =
+      previousPathname === '/' ||
+      previousPathname === '/en' ||
+      previousPathname === '/ja';
+
+    if (hasSeenWelcome && isTargetRoute && cameFromHome) {
+      const nextCount =
+        Number(
+          typeof window !== 'undefined'
+            ? sessionStorage.getItem(donationCycleCountKey)
+            : null,
+        ) + 1;
+
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem(donationCycleCountKey, String(nextCount));
+        sessionStorage.setItem(donationLastPathKey, pathname);
+      }
+
+      if (nextCount % 2 === 0) {
+        const timer = setTimeout(() => {
+          setIsDonationModalOpen(true);
+        }, 500);
+        return () => clearTimeout(timer);
+      }
+      return;
+    }
+
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem(donationLastPathKey, pathname);
+    }
+  }, [hasSeenWelcome, pathname]);
 
   useEffect(() => {
     startTransition(() => {
@@ -110,7 +182,6 @@ export default function ClientLayout({
   }, [effectiveTheme]);
 
   // Trigger randomization on page navigation
-  const pathname = usePathname();
   useEffect(() => {
     if (isCrazyMode) {
       randomize();
@@ -148,10 +219,36 @@ export default function ClientLayout({
   const { playClick } = useClick();
   useEffect(() => {
     const IGNORED_KEYS = new Set([
-      'Shift', 'Control', 'Alt', 'Meta', 'Tab', 'Escape', 'Enter',
-      'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
-      'Backspace', 'Delete', 'Home', 'End', 'PageUp', 'PageDown', 'CapsLock',
-      'F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11', 'F12',
+      'Shift',
+      'Control',
+      'Alt',
+      'Meta',
+      'Tab',
+      'Escape',
+      'Enter',
+      'ArrowUp',
+      'ArrowDown',
+      'ArrowLeft',
+      'ArrowRight',
+      'Backspace',
+      'Delete',
+      'Home',
+      'End',
+      'PageUp',
+      'PageDown',
+      'CapsLock',
+      'F1',
+      'F2',
+      'F3',
+      'F4',
+      'F5',
+      'F6',
+      'F7',
+      'F8',
+      'F9',
+      'F10',
+      'F11',
+      'F12',
     ]);
 
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -159,7 +256,12 @@ export default function ClientLayout({
       const el = document.activeElement;
       if (!el) return;
       const tag = el.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (el as HTMLElement).isContentEditable) {
+      if (
+        tag === 'INPUT' ||
+        tag === 'TEXTAREA' ||
+        tag === 'SELECT' ||
+        (el as HTMLElement).isContentEditable
+      ) {
         playClick();
       }
     };
@@ -210,6 +312,15 @@ export default function ClientLayout({
       {children}
       <ScrollRestoration />
       <WelcomeModal />
+      <DonationModal
+        open={isDonationModalOpen}
+        onOpenChange={open => {
+          setIsDonationModalOpen(open);
+          if (!open && typeof window !== 'undefined') {
+            sessionStorage.setItem('donation-modal-seen', 'true');
+          }
+        }}
+      />
       <AchievementNotificationContainer />
       <AchievementIntegration />
       <BackToTop />

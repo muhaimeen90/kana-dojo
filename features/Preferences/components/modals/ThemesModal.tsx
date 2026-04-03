@@ -8,7 +8,7 @@ import {
 } from '@/features/Preferences/data/themes/themes';
 import { getWallpaperById } from '@/features/Preferences/data/wallpapers/wallpapers';
 import usePreferencesStore from '@/features/Preferences/store/usePreferencesStore';
-import { useClick } from '@/shared/hooks/useAudio';
+import { useClick } from '@/shared/hooks/generic/useAudio';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
 import { memo, useCallback, useState, useEffect } from 'react';
@@ -103,7 +103,7 @@ const ThemeCard = memo(function ThemeCard({
   return (
     <button
       type='button'
-      className={`rounded-lg p-3 text-left ${isBigBeautifulTheme ? 'col-span-2 row-span-2 min-h-[11rem]' : ''}`}
+      className={`rounded-lg p-3 text-left hover:cursor-pointer ${isBigBeautifulTheme ? 'col-span-2 row-span-2 min-h-[11rem]' : ''}`}
       style={{
         ...(wallpaper ? wallpaperStyles : { background }),
         border: borderStyle,

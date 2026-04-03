@@ -11,18 +11,25 @@ import {
   Library,
   Repeat,
   Package,
+  PanelLeftClose,
+  PanelLeftOpen,
   type LucideIcon,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { motion } from 'framer-motion';
-import { useClick } from '@/shared/hooks/useAudio';
+import { useClick } from '@/shared/hooks/generic/useAudio';
 import { ReactNode, useEffect, useRef, memo, useState } from 'react';
 import { useInputPreferences } from '@/features/Preferences';
 import { removeLocaleFromPath } from '@/shared/lib/pathUtils';
 import type { Experiment } from '@/shared/data/experiments';
 import { ActionButton } from '@/shared/components/ui/ActionButton';
+import AuroraText from '@/shared/components/ui/magicui/AuroraText';
 
 const SIDEBAR_SECTION_STORAGE_PREFIX = 'sidebar-collapsible-';
+const SIDEBAR_DESKTOP_COLLAPSED_STORAGE_KEY = 'sidebar-desktop-collapsed';
+const SIDEBAR_PREFERENCES_VISITED_STORAGE_KEY = 'sidebar-preferences-visited';
+const SIDEBAR_ACTIVE_FLOAT_CLASSES =
+  'motion-safe:animate-float [--float-distance:-3.5px]';
 
 // ============================================================================
 // Types
@@ -99,6 +106,8 @@ const baseExperimentsSection: NavSection = {
 
 /** Toggle between ActionButton style (true) and simple background style (false) for active nav items */
 const USE_ACTION_BUTTON_STYLE = true;
+/** Toggle between aurora gradient heading (true) and original heading style (false) */
+const USE_AURORA_SIDEBAR_HEADING = false;
 
 // ============================================================================
 // Subcomponents
@@ -111,6 +120,10 @@ type NavLinkProps = {
   variant: 'main' | 'secondary';
   /** When true, uses framer-motion sliding indicator behind nav item */
   useSlidingIndicator?: boolean;
+  /** Whether desktop sidebar is collapsed */
+  isDesktopCollapsed?: boolean;
+  /** Overrides whether the icon should bounce while inactive */
+  animateIconWhenInactive?: boolean;
 };
 
 const NavLink = memo(
@@ -120,6 +133,8 @@ const NavLink = memo(
     onClick,
     variant,
     useSlidingIndicator = false,
+    isDesktopCollapsed = false,
+    animateIconWhenInactive,
   }: NavLinkProps) => {
     const Icon = item.icon;
     const isMain = variant === 'main';
@@ -134,8 +149,7 @@ const NavLink = memo(
     // Style classes for original (simple) design
     const activeClassesSimple =
       'bg-(--border-color) text-(--main-color) lg:bg-(--card-color)';
-    const inactiveClasses =
-      'text-(--secondary-color) hover:bg-(--card-color)';
+    const inactiveClasses = 'text-(--secondary-color) hover:bg-(--card-color)';
 
     const renderIcon = (): ReactNode => {
       if (item.charIcon) {
@@ -147,8 +161,9 @@ const NavLink = memo(
           <Icon
             className={clsx(
               'shrink-0',
-              item.animateWhenInactive &&
+              (animateIconWhenInactive ?? item.animateWhenInactive) &&
                 !isActive &&
+                !(isDesktopCollapsed && isMain) &&
                 'motion-safe:animate-bounce',
               item.iconClassName,
             )}
@@ -163,8 +178,8 @@ const NavLink = memo(
     if (useSlidingIndicator) {
       // Different indicator styles based on USE_ACTION_BUTTON_STYLE
       const indicatorClasses = USE_ACTION_BUTTON_STYLE
-        ? 'absolute inset-0 rounded-xl lg:rounded-2xl border-b-6 lg:border-b-8 border-(--main-color-accent) bg-(--main-color)'
-        : 'absolute inset-0 rounded-2xl bg-(--card-color)';
+        ? 'h-full w-full rounded-xl lg:rounded-2xl border-b-6 lg:border-b-8 border-(--main-color-accent) bg-(--main-color)'
+        : 'h-full w-full rounded-2xl bg-(--card-color)';
 
       // Text color when active differs based on style
       const activeTextClass = USE_ACTION_BUTTON_STYLE
@@ -184,13 +199,17 @@ const NavLink = memo(
           {isActive && (
             <motion.div
               layoutId='sidebar-nav-indicator'
-              className={indicatorClasses}
+              className='absolute inset-0 rounded-2xl'
               transition={{
                 type: 'spring',
                 stiffness: 300,
                 damping: 30,
               }}
-            />
+            >
+              <div
+                className={clsx(indicatorClasses, SIDEBAR_ACTIVE_FLOAT_CLASSES)}
+              />
+            </motion.div>
           )}
           <Link
             href={item.href}
@@ -200,17 +219,30 @@ const NavLink = memo(
               'relative z-10 flex items-center gap-2 rounded-2xl',
               isMain ? 'text-2xl' : 'text-base',
               'max-lg:justify-center max-lg:px-3 lg:w-full lg:px-4',
+              isDesktopCollapsed && isMain && 'lg:justify-center lg:px-3',
               paddingClasses,
               !isMain && 'max-lg:hidden',
+              isActive && SIDEBAR_ACTIVE_FLOAT_CLASSES,
               isActive
                 ? activeTextClass
                 : 'text-(--secondary-color) hover:bg-(--card-color)',
             )}
           >
-            <span className={clsx(!isActive && 'lg:text-(--main-color)')}>
+            <span
+              className={clsx(
+                !isActive &&
+                  !(isDesktopCollapsed && isMain) &&
+                  'lg:text-(--main-color)',
+              )}
+            >
               {renderIcon()}
             </span>
-            <span className={isMain ? 'max-lg:hidden' : undefined}>
+            <span
+              className={clsx(
+                isMain && 'max-lg:hidden',
+                isMain && isDesktopCollapsed && 'lg:hidden',
+              )}
+            >
               {item.label}
             </span>
           </Link>
@@ -231,14 +263,20 @@ const NavLink = memo(
             borderBottomThickness={6}
             borderRadius='xl'
             className={clsx(
-              'flex items-center gap-2',
+              'motion-safe:animate-float flex items-center gap-2 [--float-distance:-3px]',
               isMain ? 'text-2xl' : 'text-base',
               'max-lg:justify-center max-lg:px-3 max-lg:py-2 lg:w-full lg:px-4 lg:py-2',
+              isDesktopCollapsed && isMain && 'lg:justify-center lg:px-3',
               !isMain && 'max-lg:hidden',
             )}
           >
             {renderIcon()}
-            <span className={isMain ? 'max-lg:hidden' : undefined}>
+            <span
+              className={clsx(
+                isMain && 'max-lg:hidden',
+                isMain && isDesktopCollapsed && 'lg:hidden',
+              )}
+            >
               {item.label}
             </span>
           </ActionButton>
@@ -253,12 +291,18 @@ const NavLink = memo(
         prefetch
         className={clsx(
           baseClasses,
+          isDesktopCollapsed && isMain && 'lg:justify-center lg:px-3',
           isActive ? activeClassesSimple : inactiveClasses,
         )}
         onClick={onClick}
       >
         {renderIcon()}
-        <span className={isMain ? 'max-lg:hidden' : undefined}>
+        <span
+          className={clsx(
+            isMain && 'max-lg:hidden',
+            isMain && isDesktopCollapsed && 'lg:hidden',
+          )}
+        >
           {item.label}
         </span>
       </Link>
@@ -285,7 +329,7 @@ const SectionHeader = ({
     return (
       <button
         onClick={onToggle}
-        className='mt-3 flex w-full cursor-pointer items-center gap-1 px-4 text-xs text-(--main-color) uppercase opacity-70 transition-opacity hover:opacity-100 max-lg:hidden'
+        className='mt-3 mb-1 flex w-full cursor-pointer items-center gap-1 px-4 text-xs text-(--main-color) uppercase opacity-70 transition-opacity hover:opacity-100 max-lg:hidden'
       >
         {isExpanded ? (
           <ChevronDown className='h-3 w-3 text-(--secondary-color)' />
@@ -320,6 +364,21 @@ const Sidebar = () => {
 
   // Lazy load experiments
   const [loadedExperiments, setLoadedExperiments] = useState<Experiment[]>([]);
+  const [isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed] = useState(
+    () => {
+      if (typeof window === 'undefined') return false;
+      return (
+        sessionStorage.getItem(SIDEBAR_DESKTOP_COLLAPSED_STORAGE_KEY) === 'true'
+      );
+    },
+  );
+  const [hasVisitedPreferences, setHasVisitedPreferences] = useState(() => {
+    if (typeof window === 'undefined') return false;
+
+    return (
+      localStorage.getItem(SIDEBAR_PREFERENCES_VISITED_STORAGE_KEY) === 'true'
+    );
+  });
 
   // Collapse state for all collapsible sections
   const [isAcademyExpanded, setIsAcademyExpanded] = useState(() => {
@@ -438,6 +497,22 @@ const Sidebar = () => {
   }, [isExperimentsExpanded]);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    sessionStorage.setItem(
+      SIDEBAR_DESKTOP_COLLAPSED_STORAGE_KEY,
+      String(isDesktopSidebarCollapsed),
+    );
+  }, [isDesktopSidebarCollapsed]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (pathWithoutLocale !== '/preferences' || hasVisitedPreferences) return;
+
+    localStorage.setItem(SIDEBAR_PREFERENCES_VISITED_STORAGE_KEY, 'true');
+    setHasVisitedPreferences(true);
+  }, [hasVisitedPreferences, pathWithoutLocale]);
+
+  useEffect(() => {
     if (pathWithoutLocale.startsWith('/experiments')) {
       setIsExperimentsExpanded(prev => (prev ? prev : true));
     }
@@ -500,35 +575,64 @@ const Sidebar = () => {
     return pathWithoutLocale === href;
   };
 
+  const toggleDesktopSidebarCollapse = () => {
+    playClick();
+    setIsDesktopSidebarCollapsed(prev => !prev);
+  };
+
   return (
-    <div
+    <aside
       id='main-sidebar'
       className={clsx(
-        'flex lg:flex-col lg:items-start lg:gap-2',
-        'lg:sticky lg:top-0 lg:h-screen lg:w-1/5 lg:overflow-y-auto',
+        'flex lg:flex-col lg:items-start',
+        'lg:relative lg:sticky lg:top-0 lg:h-screen lg:overflow-x-hidden lg:overflow-y-auto',
         'lg:pt-6',
         'max-lg:fixed max-lg:bottom-0 max-lg:w-full',
         'max-lg:bg-(--card-color)',
         'z-50',
         'border-(--border-color) max-lg:items-center max-lg:justify-evenly max-lg:border-t-2 max-lg:py-2',
         'lg:h-auto lg:border-r lg:px-3',
-        'lg:pb-12',
+        'lg:transition-[width] lg:duration-300 lg:ease-in-out',
+        isDesktopSidebarCollapsed ? 'lg:w-20' : 'lg:w-80',
+        'lg:pb-4',
       )}
       // style={{ scrollbarGutter: 'stable' }}
     >
       {/* Logo */}
-      <h1
-        className={clsx(
-          'flex items-center gap-1.5 pl-4 text-3xl',
-          'max-3xl:flex-col max-3xl:items-start max-lg:hidden',
-        )}
+      <motion.div
+        className='hidden overflow-hidden lg:block'
+        initial={false}
+        animate={{
+          height: isDesktopSidebarCollapsed ? 0 : 'auto',
+          opacity: isDesktopSidebarCollapsed ? 0 : 1,
+          marginBottom: isDesktopSidebarCollapsed ? 0 : 8,
+        }}
+        transition={{ duration: 0.3, ease: 'easeInOut' }}
       >
-        <span className='font-bold'>KanaDojo</span>
-        <span className='font-normal text-(--secondary-color)'>かな道場️</span>
-      </h1>
+        <h1 className='max-3xl:flex-col max-3xl:items-start flex items-center gap-1.5 pl-4 text-3xl'>
+          {USE_AURORA_SIDEBAR_HEADING ? (
+            <>
+              <AuroraText className='font-bold'>KanaDojo</AuroraText>
+              <AuroraText className='font-normal'>かな道場️</AuroraText>
+            </>
+          ) : (
+            <>
+              <span className='font-bold'>KanaDojo</span>
+              <span className='font-normal text-(--secondary-color)'>
+                かな道場️
+              </span>
+            </>
+          )}
+        </h1>
+      </motion.div>
 
       {/* Main Navigation - with sliding indicator */}
-      <div className='contents max-lg:flex max-lg:w-full max-lg:items-center max-lg:justify-evenly'>
+      <div
+        className={clsx(
+          'max-lg:flex max-lg:w-full max-lg:items-center max-lg:justify-evenly',
+          'lg:flex lg:w-full lg:flex-col lg:gap-1',
+        )}
+      >
         {mainNavItems.map(item => (
           <NavLink
             key={item.href}
@@ -537,55 +641,76 @@ const Sidebar = () => {
             onClick={playClick}
             variant='main'
             useSlidingIndicator={true}
+            isDesktopCollapsed={isDesktopSidebarCollapsed}
+            animateIconWhenInactive={
+              !hasVisitedPreferences && item.href === '/preferences'
+            }
           />
         ))}
       </div>
 
       {/* Secondary Navigation Sections */}
-      {secondaryNavSections.map(section => {
-        // Determine which expand state and toggle function to use based on section title
-        const isExpanded =
-          section.title === 'Academy'
-            ? isAcademyExpanded
-            : section.title === 'Tools'
-              ? isToolsExpanded
-              : isExperimentsExpanded;
-        const onToggle =
-          section.title === 'Academy'
-            ? () => setIsAcademyExpanded(prev => !prev)
-            : section.title === 'Tools'
-              ? () => setIsToolsExpanded(prev => !prev)
-              : () => setIsExperimentsExpanded(prev => !prev);
+      {!isDesktopSidebarCollapsed &&
+        secondaryNavSections.map(section => {
+          // Determine which expand state and toggle function to use based on section title
+          const isExpanded =
+            section.title === 'Academy'
+              ? isAcademyExpanded
+              : section.title === 'Tools'
+                ? isToolsExpanded
+                : isExperimentsExpanded;
+          const onToggle =
+            section.title === 'Academy'
+              ? () => setIsAcademyExpanded(prev => !prev)
+              : section.title === 'Tools'
+                ? () => setIsToolsExpanded(prev => !prev)
+                : () => setIsExperimentsExpanded(prev => !prev);
 
-        return (
-          <div key={section.title} className='contents'>
-            <SectionHeader
-              title={section.title}
-              collapsible={section.collapsible}
-              isExpanded={isExpanded}
-              onToggle={onToggle}
-            />
-            {/* Only show items if section is expanded or not collapsible */}
-            {(!section.collapsible || isExpanded) && section.items.length > 0 && (
-              <div className='flex w-full flex-col gap-0 max-lg:hidden'>
-                {section.items.map(item => (
-                  <NavLink
-                    key={item.href}
-                    item={item}
-                    isActive={isActive(item.href)}
-                    onClick={playClick}
-                    variant='secondary'
-                    useSlidingIndicator={true}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        );
-      })}
-    </div>
+          return (
+            <div key={section.title} className='contents'>
+              <SectionHeader
+                title={section.title}
+                collapsible={section.collapsible}
+                isExpanded={isExpanded}
+                onToggle={onToggle}
+              />
+              {/* Only show items if section is expanded or not collapsible */}
+              {(!section.collapsible || isExpanded) &&
+                section.items.length > 0 && (
+                  <div className='flex w-full flex-col gap-0.5 max-lg:hidden'>
+                    {section.items.map(item => (
+                      <NavLink
+                        key={item.href}
+                        item={item}
+                        isActive={isActive(item.href)}
+                        onClick={playClick}
+                        variant='secondary'
+                        useSlidingIndicator={true}
+                      />
+                    ))}
+                  </div>
+                )}
+            </div>
+          );
+        })}
+
+      <button
+        onClick={toggleDesktopSidebarCollapse}
+        className={clsx(
+          'hidden cursor-pointer items-center rounded-2xl px-3 py-1.5 text-(--secondary-color) transition-colors hover:bg-(--card-color) hover:text-(--main-color) lg:absolute lg:bottom-8 lg:left-5 lg:flex',
+        )}
+        aria-label={
+          isDesktopSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'
+        }
+      >
+        {isDesktopSidebarCollapsed ? (
+          <PanelLeftOpen className='h-5 w-5 shrink-0' />
+        ) : (
+          <PanelLeftClose className='h-5 w-5 shrink-0' />
+        )}
+      </button>
+    </aside>
   );
 };
 
 export default Sidebar;
-

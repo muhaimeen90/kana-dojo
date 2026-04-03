@@ -38,12 +38,12 @@ export default async function AcademyPage({ params }: AcademyPageProps) {
       'A curated collection of Japanese learning guides, tutorials, and study tips covering Hiragana, Katakana, Kanji, vocabulary, grammar, and JLPT preparation.',
     numberOfItems: posts.length,
     itemListOrder: 'https://schema.org/ItemListOrderDescending',
-      itemListElement: posts.slice(0, 20).map((post, index) => ({
-        '@type': 'ListItem',
-        position: index + 1,
-        url: `https://kanadojo.com/academy/${post.slug}`,
-        name: post.title,
-      })),
+    itemListElement: posts.slice(0, 20).map((post, index) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      url: `https://kanadojo.com/academy/${post.slug}`,
+      name: post.title,
+    })),
   };
 
   // Generate CollectionPage schema

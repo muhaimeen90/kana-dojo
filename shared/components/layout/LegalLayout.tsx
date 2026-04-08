@@ -9,9 +9,10 @@ import clsx from 'clsx';
 interface LegalLayoutProps {
   children: React.ReactNode;
   icon?: React.ReactNode;
+  title?: string;
 }
 
-const LegalLayout = ({ children, icon }: LegalLayoutProps) => {
+const LegalLayout = ({ children, icon, title }: LegalLayoutProps) => {
   const { playClick } = useClick();
 
   return (
@@ -34,11 +35,14 @@ const LegalLayout = ({ children, icon }: LegalLayoutProps) => {
           </button>
         </Link>
         <article className='mt-8'>
-          {icon && (
+          {icon && title && (
             <div className='mb-6 flex items-center gap-3'>
-              <span className='motion-safe:animate-float inline-flex h-12 w-12 items-center justify-center rounded-2xl border-b-8 border-(--main-color-accent) bg-(--main-color) text-(--background-color) [animation-delay:200ms]'>
+              <span className='motion-safe:animate-float inline-flex h-12 w-12 items-center justify-center rounded-2xl border-b-8 border-(--secondary-color-accent) bg-(--secondary-color) text-(--background-color) [animation-delay:200ms]'>
                 {icon}
               </span>
+              <h1 className='text-4xl font-bold text-(--main-color)'>
+                {title}
+              </h1>
             </div>
           )}
           {children}

@@ -116,10 +116,10 @@ export default function CreditsPage() {
   ];
 
   return (
-    <LegalLayout icon={<Sparkle className='size-6' />}>
-      <h1 className='mb-4 text-4xl font-bold text-(--main-color)'>
-        Credits & Data Sources
-      </h1>
+    <LegalLayout
+      icon={<Sparkle className='size-6' />}
+      title='Credits & Data Sources'
+    >
       <p className='mb-8 text-lg text-(--secondary-color)'>
         KanaDojo is built on trusted Japanese language data sources and
         open-source technologies. We&apos;re grateful to the maintainers and

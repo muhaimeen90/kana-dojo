@@ -199,7 +199,7 @@ const GameModes = ({
                 ? 'Blitz'
                 : mode === 'gauntlet'
                   ? 'Gauntlet'
-                  : 'Training'}
+                  : 'Classic'}
             </h1>
             <p className='text-(--secondary-color)'>
               {mode === 'blitz'
@@ -267,6 +267,7 @@ const GameModes = ({
                     </h3>
                     <p className='mt-0.5 text-sm text-(--secondary-color)'>
                       {mode.description}
+                      
                     </p>
                   </div>
 

@@ -18,8 +18,8 @@ const DEFAULT_SHOWN_SUBSETS: Record<KanaCardsFilter, string[]> = {
 };
 
 const groupKanaBadgeByName: Record<string, string> = {
-  'Hiragana ひらがな': 'あ',
-  'Katakana カタカナ': 'ア',
+  'Hiragana ひらがな': 'か',
+  'Katakana カタカナ': 'カ',
 };
 
 const subsetKanaBadgeByName: Record<string, string> = {
@@ -34,9 +34,9 @@ const subsetKanaBadgeByName: Record<string, string> = {
 
 const headingBadgeClasses = {
   group:
-    'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border-b-4 border-(--secondary-color-accent) bg-(--secondary-color) text-base leading-none text-(--background-color) transition-colors duration-300 group-hover:border-(--main-color) group-hover:text-(--main-color)',
+    'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border-b-4 border-(--secondary-color-accent) bg-(--secondary-color) text-base leading-none text-(--background-color) transition-colors delay-200 duration-300 group-hover:border-(--main-color) group-hover:bg-(--main-color)',
   subset:
-    'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border-b-4 border-(--secondary-color-accent) bg-(--secondary-color) text-sm leading-none text-(--background-color) transition-colors duration-300 group-hover:border-(--main-color) group-hover:text-(--main-color)',
+    'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border-b-4 border-(--secondary-color-accent) bg-(--secondary-color) text-sm leading-none text-(--background-color) transition-colors delay-200 duration-300 group-hover:border-(--main-color) group-hover:bg-(--main-color)',
 } as const;
 
 const kanaGroups = [
